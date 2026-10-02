@@ -20,6 +20,12 @@ This project builds the system a lender would need to see her clearly. It gather
 
 ## How it Works
 
+<img width="1672" height="941" alt="74d142f5-33ea-43c5-a48f-7dd64e51a6c5" src="https://github.com/user-attachments/assets/d0334f39-1172-42a7-afd6-4cbd031ccf6d" />
+
+Raw data is never overwritten. Every derived table can be traced back to its source records through dbt docs and the Dagster asset graph.
+
+**Stack**: Python, PostgreSQL, dbt Core, Dagster, FastAPI, pytest and GitHub Actions.
+
 ## Why I had to Synthesize the Customer Data
 
 ## How the Tables Fit Together 

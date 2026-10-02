@@ -1,4 +1,4 @@
-# newcomer-credit-data-platform
+# Newcomer Credit Data Platform
 
 Picture this...
 

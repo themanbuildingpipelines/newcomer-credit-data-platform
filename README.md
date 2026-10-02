@@ -10,3 +10,7 @@ This project builds the system a lender would need to see her clearly. It gather
 
 
 <mark>**N/B: **</mark> This is a data engineering portfolio project. It is not a credit-risk model, and nothing here should be used to approve, decline, price or rank a real customer.
+
+> [!IMPORTANT]
+> **This entire message is important**, and you can bold specific parts inside it.
+

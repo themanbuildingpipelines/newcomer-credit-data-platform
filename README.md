@@ -8,4 +8,5 @@ This project builds the system a lender would need to see her clearly. It gather
 
 <img width="1536" height="1024" alt="c39826e8-3df9-44d1-bef3-500bf63c3c70" src="https://github.com/user-attachments/assets/ce2d613b-9e10-4890-9efe-901ae5e5cf14" />
 
-<mark>N/B: </mark> This is a data engineering portfolio project. It is not a credit-risk model, and nothing here should be used to approve, decline, price or rank a real customer.
+
+<mark>**N/B: **</mark> This is a data engineering portfolio project. It is not a credit-risk model, and nothing here should be used to approve, decline, price or rank a real customer.

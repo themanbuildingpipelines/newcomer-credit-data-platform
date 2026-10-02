@@ -12,4 +12,22 @@ This project builds the system a lender would need to see her clearly. It gather
 > [!IMPORTANT]
 > **This is a data engineering portfolio project**. It is not a credit-risk model, and nothing here should be used to approve, decline, price or rank a real customer.
 
+## Contents
 
+## Read this Repo in Under Five Minutes
+
+## Quick Start
+
+## How it Works
+
+## Why I had to Synthesize the Customer Data
+
+## How the Tables Fit Together 
+
+## Point-in-time Correctness
+
+## Test Evidence
+
+## Design Decisions I Made
+
+## What Doesn't Work Yet

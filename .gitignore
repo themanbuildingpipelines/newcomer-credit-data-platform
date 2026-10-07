@@ -216,3 +216,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- Newcomer Credit Data Platform ----
+# dbt build output
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+logs/
+
+# Dagster local storage
+.dagster/
+dagster_home/
+.tmp_dagster_home*/
+
+# Generated data (rebuilt by make seed, so never committed)
+data/raw/
+data/generated/
+data/public/
+*.parquet
+
+# Mac system files
+.DS_Store

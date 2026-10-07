@@ -1,0 +1,14 @@
+# dbt connection settings. Safe to commit: it holds NO secrets.
+# Every value is read from environment variables, which come from your .env file.
+newcomer_credit:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('PGHOST') }}"
+      port: "{{ env_var('PGPORT') | as_number }}"
+      user: "{{ env_var('PGUSER') }}"
+      password: "{{ env_var('PGPASSWORD') }}"
+      dbname: "{{ env_var('PGDATABASE') }}"
+      schema: staging
+      threads: 4

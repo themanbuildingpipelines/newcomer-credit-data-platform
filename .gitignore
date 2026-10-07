@@ -237,3 +237,18 @@ data/public/
 
 # Mac system files
 .DS_Store
+
+# ---- Newcomer Credit Data Platform ----
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+logs/
+.dagster/
+dagster_home/
+.tmp_dagster_home*/
+data/raw/
+data/generated/
+data/public/
+*.parquet
+.DS_Store
+.vscode/

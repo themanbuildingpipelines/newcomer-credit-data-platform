@@ -13,7 +13,7 @@ SUPERUSER ?= $(USER)
 PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 
-.PHONY: setup db schemas check dbt-debug clean
+.PHONY: setup db schemas check dbt-debug seed test clean
 
 setup:            ## create the virtual environment and install libraries
 	python3.12 -m venv .venv
@@ -32,6 +32,12 @@ check:            ## confirm everything is ready
 
 dbt-debug:        ## confirm dbt can reach the database
 	cd dbt && ../.venv/bin/dbt debug
+
+seed:             ## generate the synthetic population (same seed, same data)
+	$(PYTHON) -m generator.run --seed 42 --customers 1000
+
+test:             ## run the Python tests
+	$(PYTHON) -m pytest -q
 
 clean:            ## remove build output
 	rm -rf dbt/target dbt/logs logs

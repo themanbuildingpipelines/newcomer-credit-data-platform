@@ -13,7 +13,7 @@ SUPERUSER ?= $(USER)
 PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 
-.PHONY: setup db schemas check dbt-debug seed test clean
+.PHONY: setup db schemas tables check dbt-debug seed load psql reset-raw test clean
 
 setup:            ## create the virtual environment and install libraries
 	python3.12 -m venv .venv
@@ -27,6 +27,9 @@ db:               ## create the project role and database (run once)
 schemas:          ## create the four warehouse layers
 	psql -v ON_ERROR_STOP=1 -f sql/01_schemas.sql
 
+tables:           ## create the raw landing tables and the load log
+	psql -v ON_ERROR_STOP=1 -f sql/02_raw_tables.sql
+
 check:            ## confirm everything is ready
 	$(PYTHON) scripts/check_setup.py
 
@@ -35,6 +38,15 @@ dbt-debug:        ## confirm dbt can reach the database
 
 seed:             ## generate the synthetic population (same seed, same data)
 	$(PYTHON) -m generator.run --seed 42 --customers 1000
+
+load:             ## load the generated CSVs into the raw schema
+	$(PYTHON) -m ingestion.load_generated
+
+psql:             ## open psql as the project user, in the project database
+	psql
+
+reset-raw:        ## DEV ONLY: empty the raw tables and the load log
+	psql -v ON_ERROR_STOP=1 -c "TRUNCATE raw.customers, raw.bank_transactions, raw.applications, raw.ingestion_runs RESTART IDENTITY"
 
 test:             ## run the Python tests
 	$(PYTHON) -m pytest -q

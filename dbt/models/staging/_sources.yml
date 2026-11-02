@@ -1,0 +1,11 @@
+version: 2
+
+# The raw tables the loader fills. dbt reads them with {{ source('raw', '...') }}.
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: customers
+      - name: bank_transactions
+      - name: applications
+      - name: ingestion_runs

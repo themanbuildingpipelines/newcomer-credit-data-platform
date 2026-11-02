@@ -147,57 +147,95 @@ The gap between the two shows how much late data would have changed a decision. 
  
 ---
 
-## Test Evidence
-
-A green checkmark proves nothing on its own. Every result below comes from a test that checks a specific value or catches a specific planted defect.
+## Test evidence
  
-| Area | What the test proves | Result |
+A green checkmark proves nothing on its own. Every result below comes from a test that checks a specific value, and the key tests were proven by planting the bug they guard against.
+ 
+**Current totals:** 28 Python tests (12 generator, 10 loader, 6 API) and 26 dbt checks, including 2 unit tests. All passing.
+ 
+| Area | What the tests prove | Result |
 |---|---|---|
-| Generator | Same seed gives identical data. Planted defect rates match the config. No transaction happens before a customer arrives. | `TBD` |
-| Ingestion | Malformed records are caught. Loading the same file twice creates no duplicates. | `TBD` |
-| Schema changes | A renamed source column is detected and fails loudly. | `TBD` |
-| Calculations | dbt tests pass, and hand-worked cases match. £2,000 income minus £700 obligations gives £1,300. | `TBD` |
-| Incremental models | An incremental build matches a full rebuild, even after late records arrive. | `TBD` |
-| Reconciliation | Every planted mismatch between the ledger and the processor is either reconciled or logged. Nothing disappears silently. | `TBD` |
-| Point-in-time | A record received after a decision never changes that decision's features. Frozen snapshots never change. | `TBD` |
-| Feature validity | Repayment rates rise across feature bands. A result that's too perfect triggers the leakage alarm. | `TBD` |
-| Orchestration | A failed ingestion step is visible, and nothing downstream pretends to be fresh. Reruns recover cleanly. | `TBD` |
-| API | Valid, unknown and invalid IDs return the right responses. Latency measured on stated hardware. | `TBD` |
-| Categorisation | Rules versus an LLM, compared on a hand-labelled set the rules never saw. | `TBD` |
-| Reproducibility | A fresh machine following this README gets the same results. CI runs on every push. | `TBD` |
+| Generator | Same seed gives byte-identical files. IDs are unique. No transaction before a customer arrived. The hidden truth never appears in visible tables. | Pass (12 tests) |
+| Loading | Row counts match the manifest. Loading twice inserts nothing. Every attempt is logged. Every row links to the run that loaded it. | Pass |
+| Bad input | A tampered file (checksum mismatch) is refused and logged. A renamed column is refused. One bad value rolls back the whole file. | Pass |
+| Exactness | Money totals match to the penny after loading. Timestamps keep their UTC meaning. | Pass |
+| Data quality (dbt) | Keys unique and not null. Every transaction and application belongs to a known customer. Direction is only credit or debit. | Pass |
+| Point-in-time | No income visible after the decision reaches the feature. A late-arriving payment is excluded. | Pass |
+| Feature logic | Hand-made cases: steady salary is regular; gig income, too few payments, inconsistent amounts and no income are not. Every application has exactly one feature row. | Pass |
+| API | Known ID returns the feature. Unknown ID returns 404. Malformed ID returns 422 without touching the database. Money is sent as an exact string. Timestamps are UTC. | Pass (6 tests) |
+| Reconciliation, snapshots, orchestration, CI | | Planned |
  
-The strongest evidence lives in [`docs/defect_log.md`](docs/defect_log.md). For each planted defect, it shows the test failing, the fix, and the test passing.
+### Planted bugs, and what caught them
  
----
-
-## Design Decisions I Made
-
-A few choices that shaped the project, and why I made them.
- 
-**PostgreSQL instead of Snowflake.** It's free, runs locally and keeps the project reproducible for anyone. dbt keeps the SQL portable, so moving to a cloud warehouse later is a configuration change, not a rewrite.
- 
-**Frozen snapshots instead of recomputing features.** Recomputing is simpler, but it can't answer "what did we know at the time?" Lenders need that answer for audits and disputes, so the platform stores both.
- 
-**One synthetic world instead of several datasets.** An earlier version of this plan stitched together sources that described different people. Nothing could join, so nothing could be validated. One linked population fixed that.
- 
-**A hand-written test set for categorisation.** If I generated test descriptions from the same templates as the training data, any rule-based approach would score near perfectly and the comparison would mean nothing.
+| Planted bug | Caught by |
+|---|---|
+| Removed the arrival-date check from the generator | `test_no_transaction_before_arrival_or_after_sim_end` |
+| Removed the seed from the generator | Both determinism tests |
+| Removed `ON CONFLICT DO NOTHING` from the loader | `test_loading_twice_creates_no_duplicates` and two others |
+| Disabled the checksum check | `test_tampered_file_is_refused_and_logged` |
+| Deleted the point-in-time rule | The late-arrival unit test, and the guard test (6,211 future rows) |
+| Swapped `available_at` for `event_at` | The late-arrival unit test, and nothing else |
+| Loosened the 20% amount rule to 60% | The feature unit test |
  
 ---
-
-## What Doesn't Work Yet
-
-This section is honest by design. If something is broken, skipped or simplified, it goes here.
  
-- `TBD: list real gaps, skipped tests and shortcuts as the build progresses`
-- The validation loop is partly circular. Features and outcomes both come from the same hidden score, so this shows the pipeline preserves a planted signal through messy data. Nothing more.
-- Public credit datasets carry historical, geographic and population biases.
+## Design decisions
+ 
+A few choices that shaped the project, and why.
+ 
+**PostgreSQL instead of Snowflake.** It's free, runs locally and keeps the project reproducible for anyone. dbt keeps the SQL portable, so a cloud warehouse later is a configuration change, not a rewrite.
+ 
+**One synthetic world instead of several datasets.** An earlier version of the plan stitched together public datasets that described different people. Nothing could join, so nothing could be validated. One linked population fixed that.
+ 
+**Load through a temporary table.** Files land as plain text first, then get converted and deduplicated on the way into the real table, inside one transaction. A bad value can't leave half a file behind.
+ 
+**Unit tests for what the data can't show.** v1 data has no late payments and no irregular income, so tests on real data can't prove those cases work. dbt unit tests with hand-made rows can, so those rules are protected now, before v2 data arrives.
+ 
+**The API reads, never computes.** dbt computes and tests the feature once. The API only reads the finished table, so the two can never disagree.
+ 
+**UTC everywhere.** The generator writes UTC, models convert to UTC explicitly, and the API pins its connections to UTC. Answers never depend on where a machine happens to be.
+ 
 ---
-
+ 
+## What doesn't work yet
+ 
+This section is honest by design. If something is missing, simplified or limited, it's here.
+ 
+- **Every application currently comes out as having regular income.** Generator v1 only creates salaried customers, so this is true of the data, not a flaw in the feature. The "not regular" logic is proven with unit tests until v2 adds gig income.
+- **v1 data can't exercise late arrivals.** `event_at` and `available_at` are always equal. A unit test covers the rule in the meantime.
+- **Only one feature exists.** Recurring obligations and disposable income come next.
+- **No frozen snapshots yet.** The feature table is rebuilt on every run.
+- **No orchestration or CI.** The pipeline runs through `make`. Dagster and GitHub Actions are planned.
+- **The API opens a new database connection per request.** Fine for a demo; a real service would use a connection pool.
+- **No validation against outcomes yet.** Repayments and the hidden truth aren't used for evaluation yet. When they are, the loop will be partly circular: features and outcomes both come from the generator's assumptions.
+---
+ 
+## Repository layout
+ 
+```
+generator/                 seeded synthetic population (build.py logic, run.py files)
+ingestion/                 the loader
+sql/                       database bootstrap, schemas and raw tables
+dbt/
+  models/staging/          clean and standardise each source
+  models/intermediate/     income known at decision time, gaps between payments
+  models/marts/            feat_income_regularity
+  tests/                   custom tests, including the point-in-time guard
+  macros/                  schema naming
+api/                       FastAPI feature service
+tests/                     generator, ingestion and API tests (pytest)
+features/                  CHANGELOG.md: feature definitions and versions
+scripts/                   setup checks
+data/                      generated data (not committed)
+```
+ 
+---
+ 
 ## Responsible use
  
-This is not a credit-risk model. Synthetic outcomes reflect my generator's assumptions, not real behaviour. The only identities in the system are synthetic, and identifiers are masked in every demonstration. Analysts and the API use separate database roles, so sensitive fields stay restricted.
+This is not a credit-risk model. The only identities in the system are synthetic, and synthetic behaviour reflects my generator's assumptions, not real people.
  
-Nationality, immigration status and remittance habits are never used as features or as stand-ins for whether someone will repay. Any real lending use would need legal review, privacy and security controls, model validation, fairness testing, explainability and human oversight.
+The generator never creates nationality, immigration status or ethnicity, so those can never become features. Remittance behaviour will be reported descriptively, never as a stand-in for whether someone will repay. Any real lending use would need legal review, privacy and security controls, model validation, fairness testing, explainability and human oversight.
  
 ---
  
@@ -207,8 +245,12 @@ I studied actuarial science, so I spent years learning how lenders and insurers 
  
 The problem also isn't abstract to me. Plenty of people I know have moved abroad with solid financial lives and arrived as strangers to the local credit system. This project is my attempt to understand, from the data side, what it would take to see them clearly.
  
-I'm documenting the build as I go. You can follow along at [jimmyokoth.com](https://jimmyokoth.com).
+I'm documenting the build as I go:
  
+1. [Before the First Pipeline](https://jimmyokoth.com/blog/setting-up-a-data-engineering-project): setting up the project base
+2. [Fake Data, Real Discipline](https://jimmyokoth.com/blog/fake-data-real-discipline): the seeded generator
+3. [From Files to Tables](https://jimmyokoth.com/blog/from-files-to-tables): the loader
+4. [Every Test Passed. The Bug Was Still There.](https://jimmyokoth.com/blog/every-test-passed): the first feature, end to end
 ---
-
-**Jimmy Okoth** · Nairobi, Kenya · [LinkedIn](https://linkedin.com/in/jimthedataguy) · [GitHub](https://github.com/themanbuildingpipelines)
+ 
+**Jimmy Okoth** · Nairobi, Kenya · [LinkedIn](https://linkedin.com/in/jimthedataguy) · [GitHub](https://github.com/themanbuildingpipelines) · [jimmyokoth.com](https://jimmyokoth.com)

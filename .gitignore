@@ -252,3 +252,4 @@ data/public/
 *.parquet
 .DS_Store
 .vscode/
+dbt/.user.yml

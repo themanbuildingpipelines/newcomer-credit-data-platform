@@ -1,0 +1,30 @@
+version: 2
+
+unit_tests:
+  # The real v1 data has every payment arriving the moment it happens
+  # (event_at = available_at), so it can't tell those two columns apart.
+  # This test can: it includes a payment that HAPPENED before the decision
+  # but only ARRIVED after it. That payment must be excluded.
+  - name: late_arriving_income_is_excluded
+    model: int_income_known_at_decision
+    given:
+      - input: ref('stg_applications')
+        rows:
+          - {application_id: APP-1, customer_id: C-1, decided_at: "2025-06-01 12:00:00+00"}
+      - input: ref('stg_bank_transactions')
+        rows:
+          # Happened and arrived before the decision: counts.
+          - {transaction_id: T-ON-TIME, customer_id: C-1, direction: credit, amount: 2000,
+             event_at: "2025-05-28 06:00:00+00", available_at: "2025-05-28 06:00:00+00"}
+          # Happened before, but arrived AFTER the decision: must NOT count.
+          - {transaction_id: T-LATE, customer_id: C-1, direction: credit, amount: 2000,
+             event_at: "2025-05-30 06:00:00+00", available_at: "2025-06-10 06:00:00+00"}
+          # Older than the 6-month lookback: must NOT count.
+          - {transaction_id: T-TOO-OLD, customer_id: C-1, direction: credit, amount: 2000,
+             event_at: "2024-11-20 06:00:00+00", available_at: "2024-11-20 06:00:00+00"}
+          # Money going OUT: not income, must NOT count.
+          - {transaction_id: T-RENT, customer_id: C-1, direction: debit, amount: -800,
+             event_at: "2025-05-01 09:00:00+00", available_at: "2025-05-01 09:00:00+00"}
+    expect:
+      rows:
+        - {application_id: APP-1, transaction_id: T-ON-TIME}

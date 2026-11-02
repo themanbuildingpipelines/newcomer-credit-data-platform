@@ -9,3 +9,18 @@ seed-paths: ["seeds"]
 
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
+
+# Which schema (room) each layer is built in, and how.
+#   view  = a saved query; always shows the latest raw data, stores nothing
+#   table = the results are stored; fast to read, rebuilt on every run
+models:
+  newcomer_credit:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table

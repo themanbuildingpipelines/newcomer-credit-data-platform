@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: One row per synthetic customer, cleaned.
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+
+  - name: stg_bank_transactions
+    description: One row per bank transaction, with a credit/debit direction.
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: direction
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['credit', 'debit']
+      - name: available_at
+        data_tests: [not_null]
+
+  - name: stg_applications
+    description: One row per loan application.
+    columns:
+      - name: application_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id

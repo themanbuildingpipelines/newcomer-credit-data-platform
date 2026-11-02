@@ -13,7 +13,7 @@ SUPERUSER ?= $(USER)
 PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 
-.PHONY: setup db schemas tables check dbt-debug seed load psql reset-raw test clean
+.PHONY: setup db schemas tables check dbt-debug seed load dbt-build pipeline serve psql reset-raw test clean
 
 setup:            ## create the virtual environment and install libraries
 	python3.12 -m venv .venv
@@ -41,6 +41,17 @@ seed:             ## generate the synthetic population (same seed, same data)
 
 load:             ## load the generated CSVs into the raw schema
 	$(PYTHON) -m ingestion.load_generated
+
+dbt-build:        ## build and test every dbt model (staging, intermediate, marts)
+	cd dbt && ../.venv/bin/dbt build
+
+pipeline:         ## everything, in order: generate, load, transform and test
+	$(MAKE) seed
+	$(MAKE) load
+	$(MAKE) dbt-build
+
+serve:            ## run the feature API on http://localhost:8000 (Ctrl+C to stop)
+	$(PYTHON) -m uvicorn api.main:app --reload --port 8000
 
 psql:             ## open psql as the project user, in the project database
 	psql

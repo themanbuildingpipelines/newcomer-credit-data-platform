@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: feat_income_regularity
+    description: >
+      Income regularity per application, version 1. Uses only transactions
+      available at decision time, within the 6 months before it.
+    columns:
+      - name: application_id
+        data_tests: [unique, not_null]
+      - name: income_payments_6m
+        data_tests: [not_null]
+      - name: is_regular_income
+        data_tests: [not_null]
+      - name: feature_version
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['v1']
+
+unit_tests:
+  # The real v1 data only has salaried customers, so every application is regular.
+  # This test feeds the model hand-made rows for the cases v1 data never produces,
+  # and checks the logic says "no" when it should.
+  - name: income_regularity_says_no_when_it_should
+    model: feat_income_regularity
+    given:
+      - input: ref('int_income_gaps')
+        rows:
+          # A: a steady salary. Should be regular.
+          - {application_id: APP-A, counterparty: EMPLOYER, amount: 2000, gap_days: null}
+          - {application_id: APP-A, counterparty: EMPLOYER, amount: 2000, gap_days: 30}
+          - {application_id: APP-A, counterparty: EMPLOYER, amount: 2000, gap_days: 31}
+          # B: gig income, irregular timing. Not regular.
+          - {application_id: APP-B, counterparty: GIG APP, amount: 300, gap_days: null}
+          - {application_id: APP-B, counterparty: GIG APP, amount: 320, gap_days: 9}
+          - {application_id: APP-B, counterparty: GIG APP, amount: 310, gap_days: 4}
+          - {application_id: APP-B, counterparty: GIG APP, amount: 290, gap_days: 12}
+          # C: only two payments. Not enough evidence.
+          - {application_id: APP-C, counterparty: EMPLOYER, amount: 2000, gap_days: null}
+          - {application_id: APP-C, counterparty: EMPLOYER, amount: 2000, gap_days: 30}
+          # E: monthly, but one payment far below the others. Not consistent.
+          - {application_id: APP-E, counterparty: EMPLOYER, amount: 2000, gap_days: null}
+          - {application_id: APP-E, counterparty: EMPLOYER, amount: 2000, gap_days: 30}
+          - {application_id: APP-E, counterparty: EMPLOYER, amount: 900, gap_days: 30}
+          # D has no income rows at all.
+      - input: ref('stg_applications')
+        rows:
+          - {application_id: APP-A, customer_id: C-A}
+          - {application_id: APP-B, customer_id: C-B}
+          - {application_id: APP-C, customer_id: C-C}
+          - {application_id: APP-D, customer_id: C-D}
+          - {application_id: APP-E, customer_id: C-E}
+    expect:
+      rows:
+        - {application_id: APP-A, income_payments_6m: 3, is_regular_income: true}
+        - {application_id: APP-B, income_payments_6m: 4, is_regular_income: false}
+        - {application_id: APP-C, income_payments_6m: 2, is_regular_income: false}
+        - {application_id: APP-D, income_payments_6m: 0, is_regular_income: false}
+        - {application_id: APP-E, income_payments_6m: 3, is_regular_income: false}
